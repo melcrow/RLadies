@@ -1,0 +1,202 @@
+---
+title: "RLadies Data Wrangling"
+author: "Melissa Crow"
+date: "2/19/2018"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    collapse: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mosaic)
+library(tidyverse)
+library(ggplot2)
+```
+
+## Data Wrangling Review
+
+Fortunately, this process of __data wrangling__ is much easier with R. In particular, today we will learn about several common commands for data management:
+
+- `select`: selects only certain columns in your data set
+- `filter`: selects only certain cases in your data, based on criteria you choose  
+- `mutate`: lets you create a new variable  
+- `arrange`: sorts your data set by a particular variable
+
+A useful resource for this is the RStudio Data Wrangling cheatsheet, which you can find online at (https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf). 
+
+You may also find the examples in Chapter 3 of [Exploratory Data Analysis with R](https://bookdown.org/rdpeng/exdata/) helpful.
+
+#### Setup: Installing packages
+
+Let's start by installing some very useful packages. In your console, type:
+
+```{r, eval = FALSE}
+install.packages("dplyr")
+install.packages("mosaic")
+```
+
+#### Setup: Loading packages
+
+Start by creating a new script in RStudio. Then type the following code and run it:
+
+```{r, eval = FALSE}
+library(dplyr)
+library(mosaic)
+```
+
+## Gapminder data
+
+Which country is the happiest country in each region of hte world? Which has the longest life expectancy or the highest GDP?
+
+Let's try answering these questions using the HappyPlanetIndex data set. 
+
+```{r}
+happy_planet <- read.csv("http://www.lock5stat.com/datasets/HappyPlanetIndex.csv")
+```
+
+What does this data look like? Can we use this data to answer the questions above?
+
+The `happy_planet` data contains data on 143 countries with 11 variables.
+
+One thing I like to do is use the `View()` command to open up a new tab showing a spreadsheet of my data.
+
+```{r, eval = FALSE}
+View(happy_planet)
+```
+
+
+If we have questions about it in more detail, we can view the data documentation at (http://happyplanetindex.org/about#how). 
+
+It turns out the data set has 11 variables:
+
++ __Region:__	1=Latin America, 2=Western nations, 3=Middle East, 4=Sub-Saharan Africa, 5=South Asia, 6=East Asia, 7=former Communist countries
++ __Happiness	Score__ on a 0-10 scale for average level of happiness (10 is happiest)
++ __LifeExpectancy__	Average life expectancy (in years)
++ __Footprint__	Ecological footprint - a measure of the (per capita) ecological impact
++ __HLY__	Happy Life Years - combines life expectancy with well-being
++ __HPI__	Happy Planet Index (0-100 scale)
++ __HPIRank__	HPI rank for the country
++ __GDPperCapita__	Gross Domestic Product (per capita)
++ __HDI__	Human Development Index
++ __Population__	Population (in millions)
+
+
+## Recode variables with case_when
+
+Extra Example: Suppose I don't like how Region is recorded as a number. I could change that using mutate, and then feed the new data into my grouped summary:
+
+```{r}
+happy_planet %>%
+  mutate(RegionName = case_when(
+    Region == 1 ~ "Latin America",
+    Region == 2 ~ "Western nations", 
+    Region == 3 ~ "Middle East", 
+    Region == 4 ~ "Sub-Saharan Africa",
+    Region == 5 ~ "South Asia", 
+    Region == 6 ~ "East Asia", 
+    Region == 7 ~ "former Communist"
+  )) %>%
+  group_by(RegionName) %>%
+  summarize(avgHappy = mean(Happiness))
+
+```
+
+```{r, echo = FALSE}
+happy <- happy_planet %>%
+  mutate(RegionName = case_when(
+    Region == 1 ~ "Latin America",
+    Region == 2 ~ "Western nations", 
+    Region == 3 ~ "Middle East", 
+    Region == 4 ~ "Sub-Saharan Africa",
+    Region == 5 ~ "South Asia", 
+    Region == 6 ~ "East Asia", 
+    Region == 7 ~ "former Communist"
+  )) %>%
+  select(-Region)
+
+
+map <- map_data("world")
+map <- left_join(map, happy, by = c('region' = 'Country'))
+
+ggplot() + geom_polygon(data = map, aes(x = long, y = lat, group = group, fill=RegionName, color=RegionName)) +
+  labs(title = "Happy Planet Index", subtitle = "Based on data from:http://happyplanetindex.org/", x=NULL, y=NULL) + 
+  theme_minimal()
+
+```
+
+
+## Changing the data form (gather, spread)
+
+
+__Example:__ Social Median and News
+
+Suppose we are interested in changing trends for how people get access to news. There have been a lot of stories about people getting their news information from social media. Has this increased over the last couple of years? Are some social media sources more used for getting news than others?
+
+This question was covered by Pew Research Center in an article called ["News Use Across Social Media Platforms 2017"](http://www.journalism.org/2017/09/07/news-use-across-social-media-platforms-2017/). 
+
+Let's input the data. Remember that R is case-sensitive!
+
+```{r}
+source <- c("Twitter", "YouTube", "Reddit", "Facebook")
+pct_2013 <- c(52, 20, 62, 47)
+pct_2016 <- c(59, 21, 70, 66)
+pct_2017 <- c(74, 32, 68, 68)
+```
+
+We have now created several variables containing the information we are interested in. But what does this data mean? Let's put it all together in a data frame so we can see it better:
+
+```{r}
+social_news <- data.frame(source, pct_2013, pct_2016, pct_2017)
+social_news
+```
+
+
+
+Data sets can be formatted very differently depending on your purpose for using them. Usually we work with __data frames__ in which each row is an __observation__ (e.g. a person, a country, etc.) and each column is a __variable__. 
+
+Data frames can be structured differently depending on what you need to do. Consider the `social_news` data frame that we created earlier. We can organize this data in either wide form or long form, depending on what we need. 
+
++ Wide data: Different columns may represent different aspects of the same variable, leading to a wide data frame. This is useful for some types of analysis and for printing data as a table.
+
+```{r, echo = FALSE}
+pander::pander(social_news)
+```
+
++ Long data: Rather than having separate columns for different variables, we put all the variables names in one column and all the values in another column. This leads to a long but narrow data frame, which is useful for many analyses in R. 
+
+It is easy to convert wide data to long data with the `gather()` function. `gather()` takes multiple columns, and gathers them up into a narrower form:
+
+```{r}
+social_news_long <- gather(social_news, "year", "percent", 2:4)
+social_news_long
+```
+
+Note that if we want to go from long form to wide form, it is just as easy. We can use the `spread()` function. `spread()` takes two columns and spreads them in to multiple columns. 
+
+```{r}
+social_news_wide <- spread(social_news_long, year, percent)
+social_news_wide
+```
+
+__Summary:__ If we want our data frame to look wider (more columns), we can use `spread()`. If we want to make our data frame look narrower (fewer columns), we can use `gather()`. Both forms contain the same information
+
+
+## Conclusion
+
+Getting your data set up in R can be challening, but there are a few functions that help make things tidier.
+
++ View: view your data in a separate tab
++ gather: go from wide data to long data
++ spread: go from long data to wide data
++ select: choose variables
++ filter: choose cases
++ mutate: create new variables
++ group_by and summarize: create grouped summaries
++ %>%: speed up your workflow
+
+
+

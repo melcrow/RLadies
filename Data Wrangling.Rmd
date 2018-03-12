@@ -1,0 +1,267 @@
+---
+title: "RLadies Data Wrangling"
+author: "Melissa Crow"
+date: "2/19/2018"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    collapse: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(mosaic)
+library(tidyverse)
+library(ggplot2)
+```
+
+## Introduction
+
+A recent NY Times article claimed that 50-80% of a data analysis project can be spent just getting your data into a format you can use-- sorting it, simplifying it, cleaning it up, creating variables, changing the format, etc. 
+
+![](Figures/NYTDataWrangling.png)
+
+Fortunately, this process of __data wrangling__ is much easier with R. In particular, today we will learn about several common commands for data management:
+
+- `select`: selects only certain columns in your data set
+- `filter`: selects only certain cases in your data, based on criteria you choose  
+- `mutate`: lets you create a new variable  
+- `arrange`: sorts your data set by a particular variable
+
+A useful resource for this is the RStudio Data Wrangling cheatsheet, which you can find online at (https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf). 
+
+You may also find the examples in Chapter 3 of [Exploratory Data Analysis with R](https://bookdown.org/rdpeng/exdata/) helpful.
+
+#### Setup: Installing packages
+
+Let's start by installing some very useful packages. In your console, type:
+
+```{r, eval = FALSE}
+install.packages("dplyr")
+install.packages("mosaic")
+```
+
+#### Setup: Loading packages
+
+Now that we've installed the packages we need, we have to load them into R. This tells R that we want to use those packages for our current project. 
+
+Start by creating a new script in RStudio. Then type the following code and run it:
+
+```{r, eval = FALSE}
+library(dplyr)
+library(mosaic)
+```
+
+Great! We are ready to get started. Let's get some data.
+
+#### Inputting data
+
+We talked about two ways to input data last time:
+
++ Creating a variable using `<-`
++ Inputting an entire data set using `read.csv()`  
+
+Let's read in some data from a website. 
+
+
+__Example:__ Getting data from the internet
+
+Which country is the happiest country in each region of hte world? Which has the longest life expectancy or the highest GDP?
+
+Let's try answering these questions using the HappyPlanetIndex data set. 
+
+```{r}
+happy_planet <- read.csv("http://www.lock5stat.com/datasets/HappyPlanetIndex.csv")
+```
+
+What does this data look like? Can we use this data to answer the questions above?
+
+#### Viewing data
+
+In the past, we simply typed the name of our data set or variable in order to get R to print it out. But this can sometimes backfire. What happens if we try to print out our entire data set `happy_planet`?
+
+```{r, eval = FALSE}
+happy_planet
+```
+
+The `happy_planet` data contains data on 143 countries with 11 variables-- we really don't want that cluttering up our computer.
+
+There are several ways to deal with this. First, we could just print out the first few rows:
+
+```{r}
+head(happy_planet)
+```
+
+But that's still quite messy because we have 11 variables.
+
+One thing I like to do is use the `View()` command to open up a new tab showing a spreadsheet of my data.
+
+```{r, eval = FALSE}
+View(happy_planet)
+```
+
+
+We can learn more about the structure of the data:
+
+```{r}
+str(happy_planet)
+```
+
+If we have questions about it in more detail, we can view the data documentation at (http://happyplanetindex.org/about#how). 
+
+It turns out the data set has 11 variables:
+
++ __Region:__	1=Latin America, 2=Western nations, 3=Middle East, 4=Sub-Saharan Africa, 5=South Asia, 6=East Asia, 7=former Communist countries
++ __Happiness__  Scored on a 0-10 scale for average level of happiness (10 is happiest)
++ __LifeExpectancy__	Average life expectancy (in years)
++ __Footprint__	Ecological footprint - a measure of the (per capita) ecological impact
++ __HLY__	Happy Life Years - combines life expectancy with well-being
++ __HPI__	Happy Planet Index (0-100 scale)
++ __HPIRank__	HPI rank for the country
++ __GDPperCapita__	Gross Domestic Product (per capita)
++ __HDI__	Human Development Index
++ __Population__	Population (in millions)
+
+## Choosing variables: select()
+
+Suppose we are most interested in comparing the happiness of a country with its GDP. All the other variables can just make our data confusing to look at. 
+
+We can focus on a few variables using `select()`.
+
+```{r}
+happy <- happy_planet %>%
+  select(Country, Region, Happiness, GDPperCapita, Population)
+
+
+happy_small <- happy_planet %>%
+  select(Country, Region, Happiness)
+head(happy_small)
+```
+
+## Focusing on certain cases: filter()
+
+Suppose we want to focus on the link between Happiness and GDPperCapita in Western nations. If we check the data documentation, we see that this is region 2. How can we just look at the countries in region 2?
+
+```{r}
+happy2 <- happy_small %>%
+  filter(Region == 2)
+
+head(happy2)
+```
+
+Note that we had to use `==` instead of just `=`.  This is because `=` would set the entire variable region equal to 2 instead of just checking to see which countries were in region 2.  
+
+We can use filter to choose any kind of subset in our data. For instance, we could look at the happiest countries:
+
+```{r}
+happy2 %>%
+  filter(Happiness > 7)
+```
+
+You can also use filter to find specific cases in a large data set:
+
+```{r}
+happy2 %>%
+  filter( Country %in% c("Australia", "Canada", "United States of America"))
+```
+
+
+
+## Creating new variables: mutate()
+
+What if we want to find the overall Gross Domestic Product (GDP) of each country? The data set gives us GDP per person, but not the overall GDP of each country. 
+
+Fortunately, the data set also gives us the population (in millions). We can use this to calculate the total GDP for each country. Then we can save that calculation in a variable called TotalGDP in case we want to use it later.
+
+```{r}
+happy3 <- happy %>%
+  mutate(TotalGDP = GDPperCapita * Population )
+
+head(happy3)
+```
+
+This gives us the total GDP for each country in millions of dollars.
+
+
+## Sorting your data: arrange()
+
+So now we have the happiness scores and total GDP for all the countries in the data set. Which countries are the happiest? The wealthiest?
+
+We could go through our data by hand and try to find the largest values, but that sounds like a pain. Let's sort our data to find out.
+
+The happiest countries:
+
+```{r}
+happy4 <- happy3 %>%
+  arrange( desc(Happiness))
+
+head(happy4)
+```
+
+
+```{r}
+happy5 <- happy3 %>%
+  arrange( desc(TotalGDP)) %>%
+  select(Country, TotalGDP, Happiness)
+
+head(happy5)
+```
+
+
+## Grouped summaries: group_by() and summarize() 
+
+In the last section, we built on the skills we had already developed in order to find the happiest countries in one particular region. But what if we wanted to compare happiness across all the regions, on average?
+
+We can do this by creating a grouped summary. First we group our data by one variable (e.g. Region), and then we summarize each region (e.g. with the average happiness in that region).
+
+Here's what the code looks like:
+
+```{r}
+happy_planet %>%
+  group_by(Region) %>%
+  summarize(AverageHappy = mean(Happiness))
+```
+
+## Workflow: piping %>%
+
+Suppose we want to do multiple tasks at once. It got a little clunky to try to keep creating multiple data sets-- happy2, happy3, happy4, etc.  
+
+What if we could put everything in order and have R go through all the steps at once?  
+
+We can.  
+
+For instance, if we wanted to focus on Western countries and look at the total GDP of the happiest countries, we could do so:  
+
+```{r}
+happy_final <- happy_planet %>%
+  filter(Region == 2) %>%
+  mutate(TotalGDP = GDPperCapita * Population ) %>%
+  arrange( desc(Happiness)) %>%
+  select(Country, TotalGDP, Happiness)
+
+head(happy_final)
+```
+
+
+## Conclusion
+
+Getting your data set up in R can be challenging, but there are a few functions that help make things tidier.
+
++ View: view your data in a separate tab
++ select: choose variables
++ filter: choose cases
++ mutate: create new variables
++ group_by and summarize: create grouped summaries
++ %>%: speed up your workflow
+
+## Your turn
+
+1. Input the data set "HomesForSale" from the Lock5 website (http://www.lock5stat.com/datasets/HomesForSale.csv). 
+2. Filter your data to only look at homes with fewer than 5 bedrooms.
+3. Create a new variable to measure the price-to-size ratio. In other words, let PricePerArea = Price / Size. 
+4. Let's fine the average price per square foot in each of the four states in the data set using a grouped summary. Which state has the most expensive houses per square foot?
+
+
+

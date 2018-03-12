@@ -31,6 +31,8 @@ Fortunately, this process of **data wrangling** is much easier with R. In partic
 -   `mutate`: lets you create a new variable
 -   `arrange`: sorts your data set by a particular variable
 
+You can find this document online at (<https://github.com/melcrow/RLadies/blob/master/Data_Wrangling.md>).
+
 A useful resource for this is the RStudio Data Wrangling cheatsheet, which you can find online at (<https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf>).
 
 You may also find the examples in Chapter 3 of [Exploratory Data Analysis with R](https://bookdown.org/rdpeng/exdata/) helpful.
